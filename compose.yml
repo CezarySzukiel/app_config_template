@@ -22,7 +22,7 @@ services:
     command: ["sh", "-c", "npm install && exec npm run dev -- --host 0.0.0.0"]
 
   db:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_DB: app
       POSTGRES_USER: postgres
@@ -33,7 +33,7 @@ services:
       - db_data:/var/lib/postgresql/data
 
   sonar-db:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_DB: sonar
       POSTGRES_USER: sonar
@@ -42,7 +42,7 @@ services:
       - sonar_db_data:/var/lib/postgresql/data
 
   sonarqube:
-    image: sonarqube:lts-community
+    image: sonarqube:26.4.0.121862-community
     depends_on:
       - sonar-db
     ports:
@@ -57,7 +57,7 @@ services:
       - sonarqube_logs:/opt/sonarqube/logs
 
   sonar-scanner:
-    image: sonarsource/sonar-scanner-cli:latest
+    image: sonarsource/sonar-scanner-cli:12.1.0.3225_8.0.1
     profiles: ["tools"]
     depends_on:
       - sonarqube
