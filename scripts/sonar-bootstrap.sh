@@ -30,11 +30,11 @@ SONAR_ADMIN_LOGIN="${REQUESTED_SONAR_ADMIN_LOGIN:-${SONAR_ADMIN_LOGIN:-admin}}"
 
 generate_secret() {
   if command -v openssl >/dev/null 2>&1; then
-    openssl rand -hex 24
+    printf 'A1!%sa\n' "$(openssl rand -hex 24)"
   else
     python3 - <<'PY'
 import secrets
-print(secrets.token_hex(24))
+print(f"A1!{secrets.token_hex(24)}a")
 PY
   fi
 }
@@ -43,6 +43,51 @@ SONAR_ADMIN_PASSWORD="${REQUESTED_SONAR_ADMIN_PASSWORD:-${SONAR_ADMIN_PASSWORD:-
 
 urlencode() {
   python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$1"
+}
+
+auth_valid() {
+  login="$1"
+  password="$2"
+
+  curl -fsS \
+    -u "${login}:${password}" \
+    "${SONAR_URL}/api/authentication/validate" 2>/dev/null \
+    | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("valid") else 1)' 2>/dev/null
+}
+
+ensure_admin_auth() {
+  if auth_valid "$SONAR_ADMIN_LOGIN" "$SONAR_ADMIN_PASSWORD"; then
+    echo "Using configured SonarQube admin credentials."
+    return
+  fi
+
+  if ! auth_valid admin admin; then
+    echo "Could not authenticate to SonarQube." >&2
+    echo "The instance is already initialized, but the configured admin credentials did not work." >&2
+    echo "Restore the matching .env.sonar, set SONAR_ADMIN_PASSWORD to the current admin password, or reset the SonarQube volumes." >&2
+    exit 1
+  fi
+
+  if [ "$SONAR_ADMIN_LOGIN" != "admin" ]; then
+    echo "A fresh SonarQube instance only has the default 'admin' user." >&2
+    echo "Unset SONAR_ADMIN_LOGIN or set it to 'admin' for first-time bootstrap." >&2
+    exit 1
+  fi
+
+  echo "Changing first-time SonarQube admin password..."
+
+  curl -fsS \
+    -u "admin:admin" \
+    -X POST "${SONAR_URL}/api/users/change_password" \
+    --data-urlencode "login=${SONAR_ADMIN_LOGIN}" \
+    --data-urlencode "previousPassword=admin" \
+    --data-urlencode "password=${SONAR_ADMIN_PASSWORD}" \
+    >/dev/null
+
+  if ! auth_valid "$SONAR_ADMIN_LOGIN" "$SONAR_ADMIN_PASSWORD"; then
+    echo "SonarQube admin password change completed, but the new credentials were not accepted." >&2
+    exit 1
+  fi
 }
 
 echo "Waiting for SonarQube at ${SONAR_URL}..."
@@ -78,26 +123,23 @@ if [ "$ready" != "1" ]; then
   exit 1
 fi
 
-echo "Trying first-time admin password change..."
-
-curl -fsS \
-  -u "admin:admin" \
-  -X POST "${SONAR_URL}/api/users/change_password" \
-  --data-urlencode "login=${SONAR_ADMIN_LOGIN}" \
-  --data-urlencode "previousPassword=admin" \
-  --data-urlencode "password=${SONAR_ADMIN_PASSWORD}" \
-  >/dev/null || true
+ensure_admin_auth
 
 create_project() {
   project_key="$1"
   project_name="$2"
   project_query="$(urlencode "$project_key")"
-
-  project_total="$(
+  project_response="$(
     curl -fsS \
       -u "${SONAR_ADMIN_LOGIN}:${SONAR_ADMIN_PASSWORD}" \
-      "${SONAR_URL}/api/projects/search?projects=${project_query}" \
-      | python3 -c 'import json,sys; print(json.load(sys.stdin).get("paging", {}).get("total", 0))'
+      "${SONAR_URL}/api/projects/search?projects=${project_query}"
+  )" || {
+    echo "Failed to search for SonarQube project '${project_key}'." >&2
+    exit 1
+  }
+
+  project_total="$(
+    python3 -c 'import json,sys; print(json.load(sys.stdin).get("paging", {}).get("total", 0))' <<<"$project_response"
   )"
 
   if [ "$project_total" = "0" ]; then
@@ -113,14 +155,19 @@ create_project() {
 generate_project_token() {
   project_key="$1"
   token_name="${project_key}-analysis-$(date +%Y%m%d%H%M%S)"
+  token_response="$(
+    curl -fsS \
+      -u "${SONAR_ADMIN_LOGIN}:${SONAR_ADMIN_PASSWORD}" \
+      -X POST "${SONAR_URL}/api/user_tokens/generate" \
+      --data-urlencode "name=${token_name}" \
+      --data-urlencode "type=PROJECT_ANALYSIS_TOKEN" \
+      --data-urlencode "projectKey=${project_key}"
+  )" || {
+    echo "Failed to generate SonarQube analysis token for '${project_key}'." >&2
+    exit 1
+  }
 
-  curl -fsS \
-    -u "${SONAR_ADMIN_LOGIN}:${SONAR_ADMIN_PASSWORD}" \
-    -X POST "${SONAR_URL}/api/user_tokens/generate" \
-    --data-urlencode "name=${token_name}" \
-    --data-urlencode "type=PROJECT_ANALYSIS_TOKEN" \
-    --data-urlencode "projectKey=${project_key}" \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])'
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<<"$token_response"
 }
 
 echo "Creating SonarQube projects if missing..."
