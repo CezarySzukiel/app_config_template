@@ -20,13 +20,18 @@ initial commit, and starts Docker Compose.
 ## Start
 
 ```bash
-docker compose up
+./scripts/compose-up.sh
 ```
 
 ## Services
 
-- Frontend: http://localhost:5173
-- DB: localhost:5432
+- Frontend: http://localhost:${FRONTEND_PORT:-5173}
+- DB: localhost:${APP_DB_PORT:-5432}
+- SonarQube: http://localhost:${SONAR_PORT:-9000}
+
+`./scripts/compose-up.sh` writes local host ports to `.env`. If a default port is
+busy, the next free port is used, so multiple clones can run side by side. After
+`.env` exists, plain `docker compose up` uses the same ports.
 
 ## Commands
 
