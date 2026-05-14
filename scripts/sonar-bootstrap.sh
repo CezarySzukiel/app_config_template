@@ -60,6 +60,16 @@ for _ in $(seq 1 120); do
     break
   fi
 
+  sonarqube_container="$(docker compose ps -q sonarqube 2>/dev/null || true)"
+  if [ -n "$sonarqube_container" ]; then
+    sonarqube_running="$(docker inspect -f '{{.State.Running}}' "$sonarqube_container" 2>/dev/null || true)"
+    if [ "$sonarqube_running" = "false" ]; then
+      echo "SonarQube container stopped before becoming ready." >&2
+      echo "Check logs with: docker compose logs sonarqube sonar-db" >&2
+      exit 1
+    fi
+  fi
+
   sleep 2
 done
 

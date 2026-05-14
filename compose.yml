@@ -30,7 +30,7 @@ services:
     ports:
       - "${APP_DB_PORT:-5432}:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
 
   sonar-db:
     image: postgres:18
@@ -39,7 +39,7 @@ services:
       POSTGRES_USER: sonar
       POSTGRES_PASSWORD: sonar
     volumes:
-      - sonar_db_data:/var/lib/postgresql/data
+      - sonar_db_data:/var/lib/postgresql
 
   sonarqube:
     image: sonarqube:26.4.0.121862-community
