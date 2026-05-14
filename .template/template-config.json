@@ -1,0 +1,49 @@
+{
+  "placeholders": [
+    "__PROJECT_NAME__",
+    "__BACKEND_NAME__",
+    "__FRONTEND_NAME__",
+    "__PACKAGE_NAME__"
+  ],
+  "skip_dirs": [
+    ".git",
+    ".template",
+    ".venv",
+    "node_modules",
+    ".ruff_cache",
+    ".pytest_cache",
+    "__pycache__",
+    "htmlcov",
+    "temp",
+    "tmp"
+  ],
+  "skip_files": [
+    "uv.lock",
+    "package-lock.json"
+  ],
+  "text_suffixes": [
+    ".py",
+    ".toml",
+    ".md",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".ts",
+    ".js",
+    ".html",
+    ".css",
+    ".sql",
+    ".sh",
+    ".dockerignore",
+    ".gitignore"
+  ],
+  "text_file_names": [
+    "Dockerfile",
+    "compose.yml",
+    ".gitignore",
+    ".dockerignore"
+  ],
+  "template_block_start": "<!-- TEMPLATE-ONLY-BEGIN -->",
+  "template_block_end": "<!-- TEMPLATE-ONLY-END -->"
+}

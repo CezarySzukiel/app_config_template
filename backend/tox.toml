@@ -1,0 +1,49 @@
+min_version = "4.36"
+requires = [
+    "tox>=4.36",
+    "tox-uv>=1.29",
+]
+env_list = [
+    "py314",
+    "lint",
+    "type",
+    "coverage",
+]
+skip_missing_interpreters = true
+
+labels = { test = ["py314", "coverage"], static = ["lint", "type"], all = ["py314", "lint", "type", "coverage"] }
+
+[env_run_base]
+runner = "uv-venv-runner"
+dependency_groups = ["dev"]
+pass_env = [
+    "CI",
+    "GITHUB_*",
+    "PYTEST_*",
+    "NO_COLOR",
+    "TERM",
+]
+set_env = { PYTHONPATH = "{tox_root}/src" }
+
+[env.py314]
+description = "Run unit tests on Python 3.14."
+package = "uv-editable"
+commands = [["pytest", "{posargs:tests}"]]
+
+[env.lint]
+description = "Run lint checks."
+package = "skip"
+commands = [
+    ["ruff", "check", "--no-fix", "src", "tests"],
+    ["ruff", "format", "--check", "src", "tests"],
+]
+
+[env.type]
+description = "Run static type checks."
+package = "skip"
+commands = [["ty", "check", "src"]]
+
+[env.coverage]
+description = "Generate terminal, XML and HTML coverage reports."
+package = "uv-editable"
+commands = [["pytest", "--cov-report=term-missing:skip-covered", "--cov-report=xml", "--cov-report=html", "{posargs:tests}"]]
