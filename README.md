@@ -23,6 +23,14 @@ initial commit, and starts Docker Compose.
 ./scripts/compose-up.sh
 ```
 
+After cloning an already initialized project, start services and configure local
+SonarQube secrets:
+
+```bash
+./scripts/compose-up.sh -d
+./scripts/sonar-bootstrap.sh
+```
+
 ## Services
 
 - Frontend: http://localhost:${FRONTEND_PORT:-5173}

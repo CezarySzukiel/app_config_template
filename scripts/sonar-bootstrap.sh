@@ -1,10 +1,64 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_KEY_PREFIX="${1:?Usage: scripts/sonar-bootstrap.sh <project-key-prefix> [project-name]}"
-PROJECT_NAME="${2:-$PROJECT_KEY_PREFIX}"
-BACKEND_PROJECT_KEY="${PROJECT_KEY_PREFIX}-backend"
-FRONTEND_PROJECT_KEY="${PROJECT_KEY_PREFIX}-frontend"
+read_sonar_property() {
+  file="$1"
+  property="$2"
+
+  python3 -c '
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+property_name = sys.argv[2]
+
+if not path.exists():
+    raise SystemExit(f"Missing SonarQube properties file: {path}")
+
+for raw_line in path.read_text(encoding="utf-8").splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#") or line.startswith("!"):
+        continue
+    if "=" in line:
+        key, value = line.split("=", 1)
+    elif ":" in line:
+        key, value = line.split(":", 1)
+    else:
+        continue
+    if key.strip() == property_name:
+        print(value.strip())
+        raise SystemExit(0)
+
+raise SystemExit(f"Missing {property_name} in {path}")
+' "$file" "$property"
+}
+
+read_optional_sonar_property() {
+  file="$1"
+  property="$2"
+  fallback="$3"
+
+  read_sonar_property "$file" "$property" 2>/dev/null || printf '%s\n' "$fallback"
+}
+
+if [ "$#" -gt 2 ]; then
+  echo "Usage: scripts/sonar-bootstrap.sh [project-key-prefix] [project-name]" >&2
+  exit 1
+fi
+
+if [ "$#" -ge 1 ]; then
+  PROJECT_KEY_PREFIX="$1"
+  PROJECT_NAME="${2:-$PROJECT_KEY_PREFIX}"
+  BACKEND_PROJECT_KEY="${PROJECT_KEY_PREFIX}-backend"
+  FRONTEND_PROJECT_KEY="${PROJECT_KEY_PREFIX}-frontend"
+  BACKEND_PROJECT_NAME="${PROJECT_NAME} Backend"
+  FRONTEND_PROJECT_NAME="${PROJECT_NAME} Frontend"
+else
+  BACKEND_PROJECT_KEY="$(read_sonar_property backend/sonar-project.properties sonar.projectKey)"
+  FRONTEND_PROJECT_KEY="$(read_sonar_property frontend/sonar-project.properties sonar.projectKey)"
+  BACKEND_PROJECT_NAME="$(read_optional_sonar_property backend/sonar-project.properties sonar.projectName "$BACKEND_PROJECT_KEY")"
+  FRONTEND_PROJECT_NAME="$(read_optional_sonar_property frontend/sonar-project.properties sonar.projectName "$FRONTEND_PROJECT_KEY")"
+fi
 
 REQUESTED_SONAR_URL="${SONAR_URL:-}"
 REQUESTED_SONAR_PORT="${SONAR_PORT:-}"
@@ -172,8 +226,8 @@ generate_project_token() {
 
 echo "Creating SonarQube projects if missing..."
 
-create_project "$BACKEND_PROJECT_KEY" "${PROJECT_NAME} Backend"
-create_project "$FRONTEND_PROJECT_KEY" "${PROJECT_NAME} Frontend"
+create_project "$BACKEND_PROJECT_KEY" "$BACKEND_PROJECT_NAME"
+create_project "$FRONTEND_PROJECT_KEY" "$FRONTEND_PROJECT_NAME"
 
 echo "Generating project analysis tokens..."
 
