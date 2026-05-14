@@ -36,9 +36,12 @@ case "$cmd" in
     uv run ty check
     uv run pytest
     ;;
+  cov-xml)
+    uv run pytest --cov=src --cov-report=xml:/workspace/backend/coverage.xml --cov-report=term-missing
+    ;;
   *)
     echo "Unknown command: $cmd"
-    echo "Available: sync, lint, format, format-check, typecheck, test, cov, fix, check"
+    echo "Available: sync, lint, format, format-check, typecheck, test, cov, cov-xml, fix, check"
     exit 1
     ;;
 esac

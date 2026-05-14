@@ -17,6 +17,7 @@ dist/
 
 # Local env
 .env
+.env.sonar
 
 # OS / editors
 .DS_Store

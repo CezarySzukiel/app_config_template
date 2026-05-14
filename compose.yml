@@ -32,7 +32,50 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  sonar-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: sonar
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+    volumes:
+      - sonar_db_data:/var/lib/postgresql/data
+
+  sonarqube:
+    image: sonarqube:lts-community
+    depends_on:
+      - sonar-db
+    ports:
+      - "${SONAR_PORT:-9000}:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+  sonar-scanner:
+    image: sonarsource/sonar-scanner-cli:latest
+    profiles: ["tools"]
+    depends_on:
+      - sonarqube
+    working_dir: /usr/src
+    volumes:
+      - ./:/usr/src
+      - sonar_scanner_cache:/opt/sonar-scanner/.sonar/cache
+    environment:
+      SONAR_HOST_URL: ${SONAR_HOST_URL:-http://sonarqube:9000}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+
+
 volumes:
   backend_venv:
   frontend_node_modules:
   db_data:
+  sonar_db_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  sonar_scanner_cache:

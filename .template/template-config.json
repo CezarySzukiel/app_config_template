@@ -36,7 +36,8 @@
     ".sql",
     ".sh",
     ".dockerignore",
-    ".gitignore"
+    ".gitignore",
+    ".properties"
   ],
   "text_file_names": [
     "Dockerfile",
