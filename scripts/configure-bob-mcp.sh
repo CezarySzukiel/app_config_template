@@ -3,6 +3,15 @@ set -euo pipefail
 
 optional=0
 token="${SONATYPE_GUIDE_MCP_TOKEN:-}"
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+cd "$root_dir"
+
+if [ -f ".env" ]; then
+  set -a
+  . ./.env
+  set +a
+fi
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -32,12 +41,7 @@ if [ -z "$token" ] && [ -t 0 ]; then
   printf "\n"
 fi
 
-if [ -z "$token" ]; then
-  if [ "$optional" -eq 1 ]; then
-    echo "Skipping IBM Bob Sonatype MCP configuration."
-    exit 0
-  fi
-
+if [ -z "$token" ] && [ "$optional" -ne 1 ]; then
   echo "Set SONATYPE_GUIDE_MCP_TOKEN or pass the token as the first argument." >&2
   exit 1
 fi
@@ -46,20 +50,23 @@ mkdir -p .bob
 tmp_file="$(mktemp .bob/mcp.json.XXXXXX)"
 chmod 600 "$tmp_file"
 
-SONATYPE_GUIDE_MCP_TOKEN="$token" python3 - <<'PY' > "$tmp_file"
+SONATYPE_GUIDE_MCP_TOKEN="$token" \
+ZAP_MCP_URL="${ZAP_MCP_URL:-http://127.0.0.1:${ZAP_MCP_PORT:-8282}}" \
+ZAP_MCP_SECURITY_KEY="${ZAP_MCP_SECURITY_KEY:-local-zap-mcp-change-me}" \
+python3 - <<'PY' > "$tmp_file"
 from __future__ import annotations
 
 import json
 import os
 
-token = os.environ["SONATYPE_GUIDE_MCP_TOKEN"]
+token = os.environ.get("SONATYPE_GUIDE_MCP_TOKEN", "")
 config = {
     "mcpServers": {
-        "sonatypeGuide": {
+        "owaspZap": {
             "type": "streamable-http",
-            "url": "https://mcp.guide.sonatype.com/mcp",
+            "url": os.environ["ZAP_MCP_URL"],
             "headers": {
-                "Authorization": f"Bearer {token}",
+                "Authorization": os.environ["ZAP_MCP_SECURITY_KEY"],
             },
             "alwaysAllow": [],
             "disabled": False,
@@ -67,10 +74,26 @@ config = {
     }
 }
 
+if token:
+    config["mcpServers"]["sonatypeGuide"] = {
+        "type": "streamable-http",
+        "url": "https://mcp.guide.sonatype.com/mcp",
+        "headers": {
+            "Authorization": f"Bearer {token}",
+        },
+        "alwaysAllow": [],
+        "disabled": False,
+    }
+
 print(json.dumps(config, indent=2))
 PY
 
 mv "$tmp_file" .bob/mcp.json
 chmod 600 .bob/mcp.json
 
-echo "Configured IBM Bob MCP in .bob/mcp.json."
+if [ -z "$token" ]; then
+  echo "Configured IBM Bob to use the official OWASP ZAP MCP server in .bob/mcp.json."
+  echo "Skipped Sonatype Guide MCP because no token was provided."
+else
+  echo "Configured IBM Bob to use official OWASP ZAP MCP and Sonatype Guide MCP in .bob/mcp.json."
+fi

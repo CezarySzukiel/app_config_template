@@ -19,7 +19,7 @@ services:
       - frontend_node_modules:/workspace/frontend/node_modules
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
-    command: ["sh", "-c", "npm install && exec npm run dev -- --host 0.0.0.0"]
+    command: ["sh", "-c", "npm install --no-package-lock && exec npm run dev"]
 
   db:
     image: postgres:18
@@ -31,6 +31,57 @@ services:
       - "${APP_DB_PORT:-5432}:5432"
     volumes:
       - db_data:/var/lib/postgresql
+
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    network_mode: host
+    depends_on:
+      - frontend
+    environment:
+      ZAP_PORT: ${ZAP_PORT:-8080}
+      ZAP_API_KEY: ${ZAP_API_KEY:-local-zap-change-me}
+      ZAP_MCP_PORT: ${ZAP_MCP_PORT:-8282}
+      ZAP_MCP_SECURITY_KEY: ${ZAP_MCP_SECURITY_KEY:-local-zap-mcp-change-me}
+    volumes:
+      - zap_home:/home/zap/.ZAP
+      - ./zap/reports:/zap/wrk:rw
+    command:
+      - bash
+      - -lc
+      - |
+        if ! /zap/zap.sh -cmd -addoninstall mcp; then
+          if ! ls /home/zap/.ZAP/plugin/mcp-*.zap >/dev/null 2>&1; then
+            echo "Could not install the official ZAP MCP add-on." >&2
+            exit 1
+          fi
+        fi
+
+        exec /zap/zap.sh -daemon \
+          -host 127.0.0.1 \
+          -port "$${ZAP_PORT}" \
+          -config "api.key=$${ZAP_API_KEY}" \
+          -config api.addrs.addr.name=127.0.0.1 \
+          -config api.addrs.addr.regex=false \
+          -config api.disablekey=false \
+          -config "mcp.port=$${ZAP_MCP_PORT}" \
+          -config mcp.securityKeyEnabled=true \
+          -config "mcp.securityKey=$${ZAP_MCP_SECURITY_KEY}" \
+          -config mcp.secureOnly=false \
+          -config mcp.recordInHistory=false
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import os, urllib.parse, urllib.request; key=urllib.parse.quote(os.environ['ZAP_API_KEY']); port=os.environ['ZAP_PORT']; urllib.request.urlopen('http://127.0.0.1:%s/JSON/core/view/version/?apikey=%s' % (port, key), timeout=5)\""]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  zap-baseline:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    profiles: ["tools"]
+    depends_on:
+      - frontend
+    working_dir: /zap/wrk
+    volumes:
+      - ./zap:/zap/wrk:rw
 
   sonar-db:
     image: postgres:18
@@ -74,6 +125,7 @@ volumes:
   backend_venv:
   frontend_node_modules:
   db_data:
+  zap_home:
   sonar_db_data:
   sonarqube_data:
   sonarqube_extensions:

@@ -14,12 +14,12 @@ python3 .template/bootstrap.py "$PROJECT_NAME"
 
 chmod +x scripts/*.sh 2>/dev/null || true
 
-bash scripts/configure-bob-mcp.sh --optional
-
 bash scripts/configure-ports.sh
 set -a
 . ./.env
 set +a
+
+bash scripts/configure-bob-mcp.sh --optional
 
 rm -rf .git
 git init -b main 2>/dev/null || git init
@@ -47,5 +47,8 @@ fi
 echo "Project initialized: $PROJECT_NAME"
 echo "SonarQube: ${SONAR_URL}"
 echo "To run Sonar scan later: ./scripts/sonar-scan.sh"
+echo "OWASP ZAP: ${ZAP_BASE_URL}"
+echo "OWASP ZAP MCP: ${ZAP_MCP_URL}"
+echo "To run ZAP baseline scan later: ./scripts/zap-scan.sh"
 
-docker compose logs -f backend frontend sonarqube
+docker compose logs -f backend frontend zap sonarqube

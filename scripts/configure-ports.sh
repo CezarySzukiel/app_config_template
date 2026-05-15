@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 import socket
 import subprocess
 from pathlib import Path
@@ -19,6 +20,8 @@ env_file = Path(".env")
 ports = [
     ("FRONTEND_PORT", 5173, "frontend", 5173),
     ("APP_DB_PORT", 5432, "db", 5432),
+    ("ZAP_PORT", 8080, "zap", 8080),
+    ("ZAP_MCP_PORT", 8282, "zap", 8282),
     ("SONAR_PORT", 9000, "sonarqube", 9000),
 ]
 
@@ -71,6 +74,20 @@ def published_port(service: str, container_port: int) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def service_running(service: str) -> bool:
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "ps", "-q", service],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return False
+
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
 def next_free(preferred: int, used: set[int]) -> int:
     port = preferred
     while port in used or not is_free(port):
@@ -110,7 +127,12 @@ for key, preferred, service, container_port in ports:
         raise SystemExit(f"{key} must be a TCP port number, got {raw_value!r}") from error
 
     current = published_port(service, container_port)
-    if explicit or requested == current or (requested not in used and is_free(requested)):
+    if (
+        explicit
+        or requested == current
+        or (current is None and service_running(service) and requested not in used)
+        or (requested not in used and is_free(requested))
+    ):
         selected = requested
     else:
         selected = next_free(requested, used)
@@ -121,6 +143,30 @@ for key, preferred, service, container_port in ports:
 for key, value in chosen.items():
     lines = set_env(lines, key, str(value))
 
+zap_base_url = os.environ.get("ZAP_BASE_URL") or file_values.get("ZAP_BASE_URL")
+if not zap_base_url or re.fullmatch(r"http://127\.0\.0\.1:\d+", zap_base_url):
+    lines = set_env(lines, "ZAP_BASE_URL", f"http://127.0.0.1:{chosen['ZAP_PORT']}")
+
+zap_mcp_url = os.environ.get("ZAP_MCP_URL") or file_values.get("ZAP_MCP_URL")
+if not zap_mcp_url or re.fullmatch(r"http://127\.0\.0\.1:\d+", zap_mcp_url):
+    lines = set_env(lines, "ZAP_MCP_URL", f"http://127.0.0.1:{chosen['ZAP_MCP_PORT']}")
+
+zap_target = os.environ.get("ZAP_TARGET") or file_values.get("ZAP_TARGET")
+if not zap_target:
+    lines = set_env(lines, "ZAP_TARGET", "http://frontend:5173")
+
+zap_mcp_target = os.environ.get("ZAP_MCP_TARGET") or file_values.get("ZAP_MCP_TARGET")
+if not zap_mcp_target or re.fullmatch(r"http://127\.0\.0\.1:\d+", zap_mcp_target):
+    lines = set_env(lines, "ZAP_MCP_TARGET", f"http://127.0.0.1:{chosen['FRONTEND_PORT']}")
+
+zap_api_key = os.environ.get("ZAP_API_KEY") or file_values.get("ZAP_API_KEY")
+if not zap_api_key:
+    lines = set_env(lines, "ZAP_API_KEY", secrets.token_urlsafe(32))
+
+zap_mcp_security_key = os.environ.get("ZAP_MCP_SECURITY_KEY") or file_values.get("ZAP_MCP_SECURITY_KEY")
+if not zap_mcp_security_key:
+    lines = set_env(lines, "ZAP_MCP_SECURITY_KEY", secrets.token_urlsafe(32))
+
 sonar_url = os.environ.get("SONAR_URL") or file_values.get("SONAR_URL")
 if not sonar_url or re.fullmatch(r"http://localhost:\d+", sonar_url):
     lines = set_env(lines, "SONAR_URL", f"http://localhost:{chosen['SONAR_PORT']}")
@@ -130,5 +176,7 @@ env_file.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 print("Using host ports:")
 print(f"  Frontend: http://localhost:{chosen['FRONTEND_PORT']}")
 print(f"  DB: localhost:{chosen['APP_DB_PORT']}")
+print(f"  OWASP ZAP: http://127.0.0.1:{chosen['ZAP_PORT']}")
+print(f"  OWASP ZAP MCP: http://127.0.0.1:{chosen['ZAP_MCP_PORT']}")
 print(f"  SonarQube: http://localhost:{chosen['SONAR_PORT']}")
 PY

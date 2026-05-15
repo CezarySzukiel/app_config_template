@@ -35,6 +35,8 @@ SonarQube secrets:
 
 - Frontend: http://localhost:${FRONTEND_PORT:-5173}
 - DB: localhost:${APP_DB_PORT:-5432}
+- OWASP ZAP API: http://127.0.0.1:${ZAP_PORT:-8080}
+- OWASP ZAP MCP: http://127.0.0.1:${ZAP_MCP_PORT:-8282}
 - SonarQube: http://localhost:${SONAR_PORT:-9000}
 
 `./scripts/compose-up.sh` writes local host ports to `.env`. If a default port is
@@ -49,6 +51,17 @@ docker compose exec backend bash /workspace/scripts/tasks.sh test
 docker compose exec backend bash /workspace/scripts/tasks.sh fix
 ```
 
+Run a local OWASP ZAP baseline scan against the frontend from inside the Docker
+Compose network:
+
+```bash
+./scripts/zap-scan.sh
+```
+
+Reports are written to `zap/reports/`. The default target is
+`http://frontend:5173`; pass another target as the first argument or set
+`ZAP_TARGET`.
+
 ## AI MCP
 
 This template includes project MCP configuration for IBM Bob and workspace MCP
@@ -60,16 +73,28 @@ For IBM Bob, run:
 ./scripts/configure-bob-mcp.sh
 ```
 
-or non-interactively:
+The script writes `.bob/mcp.json`, which is ignored by Git because it contains
+local secrets. It always adds the `owaspZap` server, pointing Bob directly at
+the official OWASP ZAP MCP Integration add-on running inside the ZAP daemon.
+`./init.sh` runs this after `.env` is generated, so a freshly initialized
+project is ready for Bob to use official ZAP MCP tools immediately.
+
+To also configure Sonatype Guide, run non-interactively:
 
 ```bash
 SONATYPE_GUIDE_MCP_TOKEN=sonatype_pat_xxx ./scripts/configure-bob-mcp.sh
 ```
 
-The script writes `.bob/mcp.json`, which is ignored by Git because it contains
-the API key. The tracked `.bob/mcp.example.json` file documents the expected
-configuration shape. `./init.sh` also runs this configuration step and prompts
-for the key when started from an interactive terminal.
+The tracked `.bob/mcp.example.json` file documents the expected IBM Bob
+configuration shape. Open Bob, enable MCP servers, and enable the `owaspZap`
+tools. The target URL visible to the ZAP daemon is written to `.env` as
+`ZAP_MCP_TARGET`. Prefer the official `zap_baseline_scan` prompt first; use
+`zap_full_scan` and active-scan tools only for systems you own or have
+permission to test.
+
+The ZAP daemon uses Docker host networking so the official ZAP MCP server can
+stay on localhost, as recommended by the ZAP documentation, while still being
+reachable by IBM Bob on the host.
 
 This template includes workspace MCP configuration for Sonatype Guide in
 `.vscode/mcp.json`. When VS Code starts the MCP server for the first time, it

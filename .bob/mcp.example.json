@@ -1,5 +1,14 @@
 {
   "mcpServers": {
+    "owaspZap": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:8282",
+      "headers": {
+        "Authorization": "<local-zap-mcp-security-key-from-.env>"
+      },
+      "alwaysAllow": [],
+      "disabled": false
+    },
     "sonatypeGuide": {
       "type": "streamable-http",
       "url": "https://mcp.guide.sonatype.com/mcp",

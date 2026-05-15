@@ -8,4 +8,5 @@ __pycache__
 .ruff_cache
 htmlcov
 coverage.xml
+zap/reports/*
 .DS_Store

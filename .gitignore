@@ -19,6 +19,8 @@ dist/
 .env
 .env.sonar
 .bob/mcp.json
+zap/reports/*
+!zap/reports/.gitkeep
 
 # OS / editors
 .DS_Store
