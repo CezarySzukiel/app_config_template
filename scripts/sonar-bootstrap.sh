@@ -66,9 +66,18 @@ REQUESTED_SONAR_HOST_URL="${SONAR_HOST_URL:-}"
 REQUESTED_SONAR_ADMIN_LOGIN="${SONAR_ADMIN_LOGIN:-}"
 REQUESTED_SONAR_ADMIN_PASSWORD="${SONAR_ADMIN_PASSWORD:-}"
 
+# Load persisted local secrets first, then the compose port map. This keeps
+# generated tokens/passwords while making bootstrap follow the ports selected by
+# scripts/configure-ports.sh after a fresh clone.
 if [ -f ".env.sonar" ]; then
   set -a
   . ./.env.sonar
+  set +a
+fi
+
+if [ -f ".env" ]; then
+  set -a
+  . ./.env
   set +a
 fi
 
