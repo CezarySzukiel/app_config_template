@@ -27,7 +27,7 @@ zap/reports/*
 .idea/
 .vscode/*
 !.vscode/
-!.vscode/mcp.json
+!.vscode/mcp.example.json
 
 # temporary files
 temp/

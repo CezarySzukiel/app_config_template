@@ -39,6 +39,7 @@ docker compose up -d --build
 echo "Configuring SonarQube..."
 
 bash scripts/sonar-bootstrap.sh "$PROJECT_NAME" "$PROJECT_NAME"
+bash scripts/sonar-mcp-up.sh
 
 if [ "${RUN_SONAR_SCAN:-1}" != "0" ]; then
   bash scripts/sonar-scan.sh
@@ -46,9 +47,10 @@ fi
 
 echo "Project initialized: $PROJECT_NAME"
 echo "SonarQube: ${SONAR_URL}"
+echo "SonarQube MCP: ${SONAR_MCP_URL}"
 echo "To run Sonar scan later: ./scripts/sonar-scan.sh"
 echo "OWASP ZAP: ${ZAP_BASE_URL}"
 echo "OWASP ZAP MCP: ${ZAP_MCP_URL}"
 echo "To run ZAP baseline scan later: ./scripts/zap-scan.sh"
 
-docker compose logs -f backend frontend zap sonarqube
+docker compose logs -f backend frontend zap sonarqube sonarqube-mcp

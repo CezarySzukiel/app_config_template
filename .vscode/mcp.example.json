@@ -2,12 +2,26 @@
   "inputs": [
     {
       "type": "promptString",
+      "id": "sonarqube-mcp-user-token",
+      "description": "SonarQube MCP user token from .env.sonar",
+      "password": true
+    },
+    {
+      "type": "promptString",
       "id": "sonatype-guide-mcp-token",
       "description": "Sonatype Guide MCP API key",
       "password": true
     }
   ],
   "servers": {
+    "sonarqube": {
+      "type": "http",
+      "url": "http://127.0.0.1:8090/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:sonarqube-mcp-user-token}",
+        "SONARQUBE_READ_ONLY": "true"
+      }
+    },
     "sonatypeGuide": {
       "type": "http",
       "url": "https://mcp.guide.sonatype.com/mcp",

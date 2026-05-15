@@ -9,4 +9,8 @@ __pycache__
 htmlcov
 coverage.xml
 zap/reports/*
+.env
+.env.sonar
+.bob/mcp.json
+.vscode/mcp.json
 .DS_Store

@@ -23,6 +23,7 @@ ports = [
     ("ZAP_PORT", 8080, "zap", 8080),
     ("ZAP_MCP_PORT", 8282, "zap", 8282),
     ("SONAR_PORT", 9000, "sonarqube", 9000),
+    ("SONAR_MCP_PORT", 8090, "sonarqube-mcp", 8080),
 ]
 
 
@@ -171,6 +172,10 @@ sonar_url = os.environ.get("SONAR_URL") or file_values.get("SONAR_URL")
 if not sonar_url or re.fullmatch(r"http://localhost:\d+", sonar_url):
     lines = set_env(lines, "SONAR_URL", f"http://localhost:{chosen['SONAR_PORT']}")
 
+sonar_mcp_url = os.environ.get("SONAR_MCP_URL") or file_values.get("SONAR_MCP_URL")
+if not sonar_mcp_url or re.fullmatch(r"http://127\.0\.0\.1:\d+/mcp", sonar_mcp_url):
+    lines = set_env(lines, "SONAR_MCP_URL", f"http://127.0.0.1:{chosen['SONAR_MCP_PORT']}/mcp")
+
 env_file.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 print("Using host ports:")
@@ -179,4 +184,5 @@ print(f"  DB: localhost:{chosen['APP_DB_PORT']}")
 print(f"  OWASP ZAP: http://127.0.0.1:{chosen['ZAP_PORT']}")
 print(f"  OWASP ZAP MCP: http://127.0.0.1:{chosen['ZAP_MCP_PORT']}")
 print(f"  SonarQube: http://localhost:{chosen['SONAR_PORT']}")
+print(f"  SonarQube MCP: http://127.0.0.1:{chosen['SONAR_MCP_PORT']}/mcp")
 PY

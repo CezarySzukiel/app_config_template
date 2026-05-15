@@ -9,6 +9,16 @@
       "alwaysAllow": [],
       "disabled": false
     },
+    "sonarqube": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:8090/mcp",
+      "headers": {
+        "Authorization": "Bearer <sonarqube-user-token-from-.env.sonar>",
+        "SONARQUBE_READ_ONLY": "true"
+      },
+      "alwaysAllow": [],
+      "disabled": false
+    },
     "sonatypeGuide": {
       "type": "streamable-http",
       "url": "https://mcp.guide.sonatype.com/mcp",

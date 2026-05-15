@@ -224,6 +224,33 @@ generate_project_token() {
   python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<<"$token_response"
 }
 
+auth_token_valid() {
+  token="$1"
+
+  [ -n "$token" ] || return 1
+
+  curl -fsS \
+    -u "${token}:" \
+    "${SONAR_URL}/api/authentication/validate" 2>/dev/null \
+    | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("valid") else 1)' 2>/dev/null
+}
+
+generate_user_token() {
+  token_name="local-mcp-user-$(date +%Y%m%d%H%M%S)"
+  token_response="$(
+    curl -fsS \
+      -u "${SONAR_ADMIN_LOGIN}:${SONAR_ADMIN_PASSWORD}" \
+      -X POST "${SONAR_URL}/api/user_tokens/generate" \
+      --data-urlencode "name=${token_name}" \
+      --data-urlencode "type=USER_TOKEN"
+  )" || {
+    echo "Failed to generate SonarQube user token for MCP." >&2
+    exit 1
+  }
+
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<<"$token_response"
+}
+
 echo "Creating SonarQube projects if missing..."
 
 create_project "$BACKEND_PROJECT_KEY" "$BACKEND_PROJECT_NAME"
@@ -233,6 +260,13 @@ echo "Generating project analysis tokens..."
 
 SONAR_BACKEND_TOKEN="$(generate_project_token "$BACKEND_PROJECT_KEY")"
 SONAR_FRONTEND_TOKEN="$(generate_project_token "$FRONTEND_PROJECT_KEY")"
+
+if auth_token_valid "${SONAR_MCP_USER_TOKEN:-}"; then
+  echo "Reusing existing SonarQube MCP user token."
+else
+  echo "Generating SonarQube MCP user token..."
+  SONAR_MCP_USER_TOKEN="$(generate_user_token)"
+fi
 
 umask 077
 
@@ -246,6 +280,8 @@ SONAR_ADMIN_LOGIN=${SONAR_ADMIN_LOGIN}
 SONAR_ADMIN_PASSWORD=${SONAR_ADMIN_PASSWORD}
 SONAR_BACKEND_TOKEN=${SONAR_BACKEND_TOKEN}
 SONAR_FRONTEND_TOKEN=${SONAR_FRONTEND_TOKEN}
+SONAR_MCP_USER_TOKEN=${SONAR_MCP_USER_TOKEN}
+SONAR_MCP_READ_ONLY=${SONAR_MCP_READ_ONLY:-true}
 EOF
 chmod 600 .env.sonar
 
