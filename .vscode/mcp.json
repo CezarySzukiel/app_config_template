@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "sonatype-guide-mcp-token",
+      "description": "Sonatype Guide MCP API key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "sonatypeGuide": {
+      "type": "http",
+      "url": "https://mcp.guide.sonatype.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:sonatype-guide-mcp-token}"
+      }
+    }
+  }
+}

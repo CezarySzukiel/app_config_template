@@ -18,11 +18,14 @@ dist/
 # Local env
 .env
 .env.sonar
+.bob/mcp.json
 
 # OS / editors
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
+!.vscode/
+!.vscode/mcp.json
 
 # temporary files
 temp/

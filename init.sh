@@ -14,6 +14,8 @@ python3 .template/bootstrap.py "$PROJECT_NAME"
 
 chmod +x scripts/*.sh 2>/dev/null || true
 
+bash scripts/configure-bob-mcp.sh --optional
+
 bash scripts/configure-ports.sh
 set -a
 . ./.env

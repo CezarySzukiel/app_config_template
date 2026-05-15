@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "sonatypeGuide": {
+      "type": "streamable-http",
+      "url": "https://mcp.guide.sonatype.com/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-sonatype-guide-mcp-api-key>"
+      },
+      "alwaysAllow": [],
+      "disabled": false
+    }
+  }
+}
